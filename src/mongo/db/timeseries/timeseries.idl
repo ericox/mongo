@@ -60,6 +60,12 @@ server_parameters:
         cpp_vartype: bool
         cpp_varname: gTimeseriesBucketsCollectionClusterById
         default: true
+    "timeseriesSampleMaxNonDuplicateTriesBeforeFail":
+        description: "Maximum number of optimized sampling attempts to get a non-duplicate measurement"
+        set_at: [ startup ]
+        cpp_vartype: "std::int32_t" 
+        cpp_varname: gTimeseriesSampleMaxNonDuplicateTriesBeforeFail
+        default: 100 
 
 enums:
     BucketGranularity:
