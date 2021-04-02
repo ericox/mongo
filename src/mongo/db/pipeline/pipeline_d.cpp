@@ -109,8 +109,22 @@ createRandomCursorExecutor(const CollectionPtr& coll,
     invariant(opCtx->lockState()->isCollectionLockedForMode(coll->ns(), MODE_IS));
 
     static const double kMaxSampleRatioForRandCursor = 0.05;
-    if (sampleSize > numRecords * kMaxSampleRatioForRandCursor || numRecords <= 100) {
-        return std::pair{nullptr, false};
+    if (!expCtx->ns.isTimeseriesBucketsCollection()) {
+        if (sampleSize > numRecords * kMaxSampleRatioForRandCursor || numRecords <= 100) {
+            return std::pair{nullptr, false};
+        }
+    } else {
+        // Suppose that a time-series bucket collection is observed to contain 200 buckets, and the
+        // gTimeseriesBucketMaxCount is set to 1000. If all buckets are full, then the maximum
+        // possible measurment count would be 200 * 1000 = 200,000. The optimized
+        // SampleFromTimeseriesBucket PlanStage is not as efficient as the UnpackTimeseriesBucket
+        // PlanStage with a $sample stage at the front of the pipeline. This tipping point has been
+        // observed to occur when the sampleSize is greater than 1% of the maximum possible
+        // collection size with 200 buckets and a bucket max count of 1000.
+        static const double kBucketFillFactor = 0.01;
+        if (sampleSize > kBucketFillFactor * numRecords * gTimeseriesBucketMaxCount) {
+            return std::pair{nullptr, false};
+        }
     }
 
     // Attempt to get a random cursor from the RecordStore.
